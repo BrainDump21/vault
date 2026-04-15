@@ -1535,7 +1535,19 @@ const GH_FILE = 'vault-data.json';
 
 function handleSyncClick() {
   if (ghToken) {
-    syncToGithub(true);
+    // Show options — sync or reset
+    if (confirm('Vault is connected to GitHub.\n\nClick OK to sync now\nClick Cancel to reset and re-enter your token')) {
+      syncToGithub(true);
+    } else {
+      // Reset
+      ghToken = null; ghUsername = null; ghRepo = null; ghFileSha = null;
+      localStorage.removeItem('vault_gh_token');
+      localStorage.removeItem('vault_gh_username');
+      localStorage.removeItem('vault_gh_repo');
+      localStorage.removeItem('vault_gh_sha');
+      updateSyncBtn('disconnected');
+      document.getElementById('sync-modal').classList.add('open');
+    }
   } else {
     document.getElementById('sync-modal').classList.add('open');
   }
@@ -1602,6 +1614,16 @@ async function syncToGithub(manual = false) {
   if (!ghToken) return;
   try {
     updateSyncBtn('syncing');
+    // Always fetch latest SHA before writing to avoid conflicts
+    const check = await fetch(
+      `https://api.github.com/repos/${ghUsername}/${ghRepo}/contents/${GH_FILE}`,
+      { headers: { Authorization: `token ${ghToken}`, Accept: 'application/vnd.github.v3+json' } }
+    );
+    if (check.ok) {
+      const checkData = await check.json();
+      ghFileSha = checkData.sha;
+      localStorage.setItem('vault_gh_sha', ghFileSha);
+    }
     const content = btoa(unescape(encodeURIComponent(JSON.stringify(items))));
     const body = {
       message: 'Vault sync ' + new Date().toISOString(),
@@ -1620,9 +1642,11 @@ async function syncToGithub(manual = false) {
     if (data.content) {
       ghFileSha = data.content.sha;
       localStorage.setItem('vault_gh_sha', ghFileSha);
+      updateSyncBtn('connected');
+      if (manual) toast('Synced to GitHub ✓');
+    } else {
+      throw new Error(data.message || 'Unknown error');
     }
-    updateSyncBtn('connected');
-    if (manual) toast('Synced to GitHub ✓');
   } catch(e) {
     updateSyncBtn('error');
     if (manual) toast('Sync failed: ' + e.message, 4000);
