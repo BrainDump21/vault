@@ -1568,6 +1568,31 @@ async function saveGithubSync() {
   const username = document.getElementById('gh-username').value.trim();
   const repo = document.getElementById('gh-repo').value.trim();
   if (!token || !username || !repo) { toast('Please fill in all fields', 3000); return; }
+  
+  // Test the token first before saving
+  toast('Testing connection…');
+  try {
+    const test = await fetch('https://api.github.com/user', {
+      headers: { 
+        'Authorization': `token ${token}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+    const testData = await test.json();
+    if (test.status === 401) {
+      toast('Token rejected by GitHub — please check it and try again', 5000);
+      return;
+    }
+    if (!testData.login) {
+      toast('Could not verify token — error: ' + (testData.message || 'unknown'), 5000);
+      return;
+    }
+    toast('Token verified for: ' + testData.login + ' ✓');
+  } catch(e) {
+    toast('Connection error: ' + e.message, 5000);
+    return;
+  }
+
   ghToken = token;
   ghUsername = username;
   ghRepo = repo;
@@ -1575,7 +1600,6 @@ async function saveGithubSync() {
   localStorage.setItem('vault_gh_username', username);
   localStorage.setItem('vault_gh_repo', repo);
   document.getElementById('sync-modal').classList.remove('open');
-  toast('Connecting to GitHub…');
   await loadFromGithub();
 }
 
