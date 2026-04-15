@@ -1,0 +1,1488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f0f0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="The Vault">
+<title>The Vault</title>
+<script>
+(function(){
+  function makeIcon(size) {
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const ctx = c.getContext('2d');
+    const r = size * 0.13;
+
+    // Background — dark
+    ctx.fillStyle = '#0f0f0f';
+    ctx.beginPath();
+    ctx.roundRect(0, 0, size, size, r);
+    ctx.fill();
+
+    // Subtle border
+    ctx.strokeStyle = '#2a2a2a';
+    ctx.lineWidth = size * 0.03;
+    ctx.beginPath();
+    ctx.roundRect(size*0.015, size*0.015, size*0.97, size*0.97, r);
+    ctx.stroke();
+
+    // Gold V glyph
+    const pad = size * 0.18;
+    const top = size * 0.22;
+    const bot = size * 0.78;
+    const mid = size * 0.5;
+
+    ctx.strokeStyle = '#c9a84c';
+    ctx.lineWidth = size * 0.1;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(pad, top);
+    ctx.lineTo(mid, bot);
+    ctx.lineTo(size - pad, top);
+    ctx.stroke();
+
+    // Gold dot under V
+    ctx.fillStyle = '#c9a84c';
+    ctx.beginPath();
+    ctx.arc(mid, bot + size * 0.06, size * 0.04, 0, Math.PI * 2);
+    ctx.fill();
+
+    return c.toDataURL('image/png');
+  }
+
+  const icon192 = makeIcon(192);
+  const icon512 = makeIcon(512);
+  const icon32  = makeIcon(32);
+
+  // Favicon
+  const fav = document.createElement('link');
+  fav.rel = 'icon'; fav.type = 'image/png'; fav.href = icon32;
+  document.head.appendChild(fav);
+
+  // Apple touch icon
+  const apple = document.createElement('link');
+  apple.rel = 'apple-touch-icon'; apple.href = icon192;
+  document.head.appendChild(apple);
+
+  // PWA manifest with icon
+  const manifest = {
+    name: 'The Vault',
+    short_name: 'Vault',
+    display: 'standalone',
+    background_color: '#0f0f0f',
+    theme_color: '#0f0f0f',
+    start_url: '.',
+    icons: [
+      { src: icon192, sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+      { src: icon512, sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+  const mlink = document.createElement('link');
+  mlink.rel = 'manifest';
+  mlink.href = URL.createObjectURL(blob);
+  document.head.appendChild(mlink);
+})();
+</script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0f0f0f;
+  --surface: #181818;
+  --surface2: #222222;
+  --border: #2a2a2a;
+  --border2: #333;
+  --text: #e8e6df;
+  --muted: #888;
+  --faint: #444;
+  --gold: #c9a84c;
+  --gold-dim: #8a6e2f;
+  --blue: #4a90d9;
+  --teal: #3db89a;
+  --amber: #d4873a;
+  --purple: #9b7fe8;
+  --coral: #d95f5f;
+  --green: #4caa72;
+  --radius: 8px;
+  --radius-lg: 12px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* HEADER */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  height: 56px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-mark {
+  width: 28px;
+  height: 28px;
+  background: var(--gold);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Serif Display', serif;
+  font-size: 15px;
+  color: #0f0f0f;
+  font-weight: 400;
+}
+
+.logo-text {
+  font-family: 'DM Serif Display', serif;
+  font-size: 18px;
+  color: var(--text);
+  letter-spacing: 0.01em;
+}
+
+.logo-text span {
+  color: var(--gold);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.count-pill {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+/* SEARCH BAR */
+.search-wrap {
+  padding: 16px 28px 0;
+  display: flex;
+  gap: 8px;
+}
+
+.search-input-wrap {
+  flex: 1;
+  position: relative;
+}
+
+.search-input-wrap svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+}
+
+input[type="search"], input[type="text"], input[type="url"], textarea, select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  border-radius: var(--radius);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+input[type="search"]:focus, input[type="text"]:focus, input[type="url"]:focus, textarea:focus, select:focus {
+  border-color: var(--gold-dim);
+}
+
+.search-box {
+  width: 100%;
+  padding: 9px 12px 9px 38px;
+}
+
+.search-sort {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  border-radius: var(--radius);
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+/* TABS */
+.tabs {
+  display: flex;
+  gap: 0;
+  padding: 12px 28px 0;
+  border-bottom: 1px solid var(--border);
+  margin-top: 4px;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px 10px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.tab:hover { color: var(--text); }
+
+.tab.active {
+  color: var(--text);
+  border-bottom-color: var(--gold);
+}
+
+.tab-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tab-count {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--faint);
+  background: var(--surface2);
+  padding: 1px 5px;
+  border-radius: 10px;
+}
+
+/* TAG FILTER BAR */
+.tag-bar {
+  padding: 10px 28px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+  min-height: 44px;
+  align-items: center;
+}
+
+.tag-chip {
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  cursor: pointer;
+  background: transparent;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+
+.tag-chip:hover { color: var(--text); border-color: var(--faint); }
+.tag-chip.active { color: var(--gold); border-color: var(--gold-dim); background: rgba(201,168,76,0.08); }
+
+.tag-bar-label {
+  font-size: 11px;
+  color: var(--faint);
+  font-family: 'DM Mono', monospace;
+  margin-right: 4px;
+}
+
+/* MAIN CONTENT */
+.main {
+  padding: 20px 28px 80px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--muted);
+}
+
+.empty-state .empty-icon {
+  font-size: 36px;
+  margin-bottom: 12px;
+  opacity: 0.4;
+}
+
+.empty-state h3 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 20px;
+  color: var(--text);
+  font-weight: 400;
+  margin-bottom: 6px;
+}
+
+.empty-state p {
+  font-size: 13px;
+  max-width: 300px;
+  margin: 0 auto 20px;
+}
+
+/* CARDS */
+.cards-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  transition: border-color 0.15s, background 0.15s;
+  position: relative;
+}
+
+.card:hover {
+  border-color: var(--border2);
+  background: #1e1e1e;
+}
+
+.card.pinned {
+  border-color: var(--gold-dim);
+  background: rgba(201,168,76,0.04);
+}
+
+.card-type-bar {
+  width: 3px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  align-self: stretch;
+  min-height: 40px;
+}
+
+.card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--text);
+  line-height: 1.3;
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.card-source {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.card-date {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.card-tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.card-tag {
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+  color: var(--gold-dim);
+  background: rgba(201,168,76,0.08);
+  border: 1px solid rgba(201,168,76,0.15);
+  padding: 1px 7px;
+  border-radius: 10px;
+}
+
+.card-note {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+  line-height: 1.5;
+  font-style: italic;
+}
+
+.card-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  align-items: flex-start;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.card:hover .card-actions { opacity: 1; }
+
+.action-btn {
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s;
+  font-size: 13px;
+}
+
+.action-btn:hover { color: var(--text); border-color: var(--faint); background: var(--surface2); }
+.action-btn.pin-btn.pinned { color: var(--gold); border-color: var(--gold-dim); }
+.action-btn.delete-btn:hover { color: var(--coral); border-color: var(--coral); }
+.action-btn.share-btn:hover { color: var(--teal); border-color: var(--teal); }
+
+.pdf-size {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--faint);
+}
+
+/* TYPE COLORS */
+.type-newsletter { background: var(--blue); }
+.type-article    { background: var(--teal); }
+.type-pdf        { background: var(--amber); }
+.type-note       { background: var(--purple); }
+.type-website    { background: var(--green); }
+
+/* ADD BUTTON (FAB) */
+.fab {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--gold);
+  color: #0f0f0f;
+  border: none;
+  border-radius: 28px;
+  padding: 12px 20px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(201,168,76,0.3);
+  transition: transform 0.15s, box-shadow 0.15s;
+  z-index: 200;
+}
+
+.fab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 28px rgba(201,168,76,0.4);
+}
+
+/* MODAL */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.modal-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  transform: translateY(16px);
+  transition: transform 0.2s;
+}
+
+.modal-overlay.open .modal {
+  transform: translateY(0);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 0;
+  margin-bottom: 16px;
+}
+
+.modal-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 18px;
+  font-weight: 400;
+}
+
+.modal-close {
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-close:hover { color: var(--text); }
+
+/* TYPE SELECTOR */
+.type-selector {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 0 20px;
+  margin-bottom: 16px;
+}
+
+.type-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: var(--radius);
+  padding: 10px 8px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.12s;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.type-btn:hover { border-color: var(--border2); color: var(--text); }
+.type-btn.active { border-color: var(--gold-dim); color: var(--gold); background: rgba(201,168,76,0.08); }
+
+.type-btn-icon { font-size: 18px; display: block; margin-bottom: 4px; }
+
+/* FORM */
+.form-body { padding: 0 20px 20px; }
+
+.form-group { margin-bottom: 14px; }
+
+.form-label {
+  display: block;
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  color: var(--muted);
+  margin-bottom: 5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.form-input {
+  width: 100%;
+  padding: 9px 12px;
+}
+
+textarea.form-input {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.form-hint {
+  font-size: 11px;
+  color: var(--faint);
+  margin-top: 4px;
+}
+
+/* PDF UPLOAD */
+.pdf-drop {
+  border: 1px dashed var(--border2);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  background: var(--surface2);
+}
+
+.pdf-drop:hover, .pdf-drop.dragover {
+  border-color: var(--gold-dim);
+  background: rgba(201,168,76,0.04);
+}
+
+.pdf-drop-text {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.pdf-drop-text strong { color: var(--gold); font-weight: 500; }
+
+.pdf-selected {
+  margin-top: 8px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--teal);
+}
+
+#pdf-file-input { display: none; }
+
+/* SAVE BUTTON */
+.save-btn {
+  width: 100%;
+  background: var(--gold);
+  color: #0f0f0f;
+  border: none;
+  border-radius: var(--radius);
+  padding: 11px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: opacity 0.15s;
+}
+
+.save-btn:hover { opacity: 0.9; }
+
+/* EXPORT/IMPORT */
+.toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 28px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tool-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  border-radius: var(--radius);
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all 0.12s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.tool-btn:hover { color: var(--text); border-color: var(--border2); }
+
+.spacer { flex: 1; }
+
+/* SEARCH HIGHLIGHT */
+mark {
+  background: rgba(201,168,76,0.25);
+  color: var(--gold);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* TOAST */
+.toast {
+  position: fixed;
+  bottom: 88px;
+  right: 28px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  z-index: 600;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+#import-input { display: none; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-mark">V</div>
+    <div class="logo-text">The <span>Vault</span></div>
+  </div>
+  <div class="header-actions">
+    <span class="count-pill" id="total-count">0 items</span>
+  </div>
+</header>
+
+<!-- SEARCH + SORT -->
+<div class="search-wrap">
+  <div class="search-input-wrap">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/>
+      <path d="M11 11L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <input type="search" class="search-box" id="search-input" placeholder="Search titles, sources, tags, notes…" oninput="renderCards()">
+  </div>
+  <select class="search-sort" id="sort-select" onchange="renderCards()">
+    <option value="date-desc">Newest first</option>
+    <option value="date-asc">Oldest first</option>
+    <option value="source">By source</option>
+    <option value="title">By title</option>
+  </select>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" data-tab="all" onclick="switchTab('all')">
+    <span>All</span>
+    <span class="tab-count" id="count-all">0</span>
+  </div>
+  <div class="tab" data-tab="newsletter" onclick="switchTab('newsletter')">
+    <span class="tab-dot" style="background:var(--blue)"></span>
+    <span>Newsletters</span>
+    <span class="tab-count" id="count-newsletter">0</span>
+  </div>
+  <div class="tab" data-tab="article" onclick="switchTab('article')">
+    <span class="tab-dot" style="background:var(--teal)"></span>
+    <span>Articles</span>
+    <span class="tab-count" id="count-article">0</span>
+  </div>
+  <div class="tab" data-tab="pdf" onclick="switchTab('pdf')">
+    <span class="tab-dot" style="background:var(--amber)"></span>
+    <span>PDFs</span>
+    <span class="tab-count" id="count-pdf">0</span>
+  </div>
+  <div class="tab" data-tab="note" onclick="switchTab('note')">
+    <span class="tab-dot" style="background:var(--purple)"></span>
+    <span>Notes</span>
+    <span class="tab-count" id="count-note">0</span>
+  </div>
+  <div class="tab" data-tab="website" onclick="switchTab('website')">
+    <span class="tab-dot" style="background:var(--green)"></span>
+    <span>Websites</span>
+    <span class="tab-count" id="count-website">0</span>
+  </div>
+</div>
+
+<!-- TAG BAR -->
+<div class="tag-bar" id="tag-bar">
+  <span class="tag-bar-label">tags:</span>
+  <span style="font-size:11px;color:var(--faint);font-family:'DM Mono',monospace">none yet</span>
+</div>
+
+<!-- TOOLBAR -->
+<div class="toolbar-row">
+  <button class="tool-btn" onclick="exportData()">↓ Export</button>
+  <button class="tool-btn" onclick="document.getElementById('import-input').click()">↑ Import</button>
+  <input type="file" id="import-input" accept=".json" onchange="importData(event)">
+  <div class="spacer"></div>
+  <span style="font-size:11px;color:var(--faint);font-family:'DM Mono',monospace" id="filter-status"></span>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="main">
+  <div class="cards-grid" id="cards-grid"></div>
+  <div id="empty-state" class="empty-state" style="display:none">
+    <div class="empty-icon">🗄️</div>
+    <h3>Your Vault is empty</h3>
+    <p>Save newsletters, articles, PDFs, and notes. Everything in one place, yours forever.</p>
+    <button class="save-btn" style="width:auto;padding:10px 24px;margin-top:0" onclick="openModal()">Add your first item</button>
+  </div>
+  <div id="no-results" style="display:none;text-align:center;padding:40px;color:var(--muted);font-size:13px">
+    No items match your search or filters.
+  </div>
+</div>
+
+<!-- FAB -->
+<button class="fab" onclick="openModal()">
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+  Add to Vault
+</button>
+
+<!-- ADD MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Add to Vault</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+
+    <!-- TYPE SELECTOR -->
+    <div class="type-selector" style="grid-template-columns: repeat(5, 1fr)">
+      <button class="type-btn active" data-type="newsletter" onclick="selectType('newsletter')">
+        <span class="type-btn-icon">📧</span>Newsletter
+      </button>
+      <button class="type-btn" data-type="article" onclick="selectType('article')">
+        <span class="type-btn-icon">📰</span>Article
+      </button>
+      <button class="type-btn" data-type="pdf" onclick="selectType('pdf')">
+        <span class="type-btn-icon">📄</span>PDF
+      </button>
+      <button class="type-btn" data-type="note" onclick="selectType('note')">
+        <span class="type-btn-icon">📝</span>Note
+      </button>
+      <button class="type-btn" data-type="website" onclick="selectType('website')">
+        <span class="type-btn-icon">🌐</span>Website
+      </button>
+    </div>
+
+    <div class="form-body">
+
+      <!-- NEWSLETTER FIELDS -->
+      <div id="fields-newsletter">
+        <div class="form-group">
+          <label class="form-label">Newsletter name *</label>
+          <input type="text" class="form-input" id="nl-title" placeholder="e.g. The Hustle, Morning Brew…">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Link (optional)</label>
+          <input type="url" class="form-input" id="nl-url" placeholder="https://…">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Sender / Source</label>
+          <input type="text" class="form-input" id="nl-source" placeholder="e.g. The Hustle">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tags <span style="color:var(--faint)">(comma separated)</span></label>
+          <input type="text" class="form-input" id="nl-tags" placeholder="e.g. business, AI, weekly">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Note</label>
+          <textarea class="form-input" id="nl-note" placeholder="Why you saved this…"></textarea>
+        </div>
+      </div>
+
+      <!-- ARTICLE FIELDS -->
+      <div id="fields-article" style="display:none">
+        <div class="form-group">
+          <label class="form-label">URL *</label>
+          <input type="url" class="form-input" id="ar-url" placeholder="https://…" oninput="maybeFetchTitle()">
+          <div class="form-hint">Paste the article URL — title will auto-fill if possible</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Title</label>
+          <input type="text" class="form-input" id="ar-title" placeholder="Article title">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Publication / Source</label>
+          <input type="text" class="form-input" id="ar-source" placeholder="e.g. New York Times, TechCrunch">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tags <span style="color:var(--faint)">(comma separated)</span></label>
+          <input type="text" class="form-input" id="ar-tags" placeholder="e.g. tech, strategy, must-read">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Note</label>
+          <textarea class="form-input" id="ar-note" placeholder="Why you saved this…"></textarea>
+        </div>
+      </div>
+
+      <!-- PDF FIELDS -->
+      <div id="fields-pdf" style="display:none">
+        <div class="form-group">
+          <div class="pdf-drop" id="pdf-drop" onclick="document.getElementById('pdf-file-input').click()" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="handlePdfDrop(event)">
+            <div class="pdf-drop-text">
+              <strong>Click to choose</strong> or drag a PDF here
+            </div>
+            <div class="pdf-selected" id="pdf-selected" style="display:none"></div>
+          </div>
+          <input type="file" id="pdf-file-input" accept=".pdf" onchange="handlePdfSelect(event)">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Title <span style="color:var(--faint)">(auto-filled from filename)</span></label>
+          <input type="text" class="form-input" id="pdf-title" placeholder="Guide or report title">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Source / Publisher</label>
+          <input type="text" class="form-input" id="pdf-source" placeholder="e.g. HubSpot, Forrester, McKinsey">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tags <span style="color:var(--faint)">(comma separated)</span></label>
+          <input type="text" class="form-input" id="pdf-tags" placeholder="e.g. report, marketing, 2024">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Note</label>
+          <textarea class="form-input" id="pdf-note" placeholder="Why you saved this…"></textarea>
+        </div>
+      </div>
+
+      <!-- WEBSITE FIELDS -->
+      <div id="fields-website" style="display:none">
+        <div class="form-group">
+          <label class="form-label">URL *</label>
+          <input type="url" class="form-input" id="ws-url" placeholder="https://…" oninput="maybeFetchWebsiteTitle()">
+          <div class="form-hint">Paste the site URL — domain will auto-fill as source</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Site name / Title</label>
+          <input type="text" class="form-input" id="ws-title" placeholder="e.g. Paul Graham Essays, Seth Godin's Blog">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Category / Description</label>
+          <input type="text" class="form-input" id="ws-source" placeholder="e.g. Marketing, Thought Leadership">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tags <span style="color:var(--faint)">(comma separated)</span></label>
+          <input type="text" class="form-input" id="ws-tags" placeholder="e.g. resource, tools, reference">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Note</label>
+          <textarea class="form-input" id="ws-note" placeholder="Why you saved this…"></textarea>
+        </div>
+      </div>
+
+      <!-- NOTE FIELDS -->
+      <div id="fields-note" style="display:none">
+        <div class="form-group">
+          <label class="form-label">Title *</label>
+          <input type="text" class="form-input" id="nt-title" placeholder="What's this clipping about?">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Source</label>
+          <input type="text" class="form-input" id="nt-source" placeholder="e.g. a website, a book, your own thought">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Content *</label>
+          <textarea class="form-input" id="nt-content" placeholder="Paste your clipping or write your note…" style="min-height:120px"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tags <span style="color:var(--faint)">(comma separated)</span></label>
+          <input type="text" class="form-input" id="nt-tags" placeholder="e.g. quotes, ideas, research">
+        </div>
+      </div>
+
+      <button class="save-btn" onclick="saveItem()">Save to Vault</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── STATE ──────────────────────────────────────────────────────────────────
+let items = [];
+let activeTab = 'all';
+let activeTag = null;
+let pdfData = null;
+let pdfFileName = '';
+let currentType = 'newsletter';
+
+// ─── STORAGE ────────────────────────────────────────────────────────────────
+function save() {
+  try { localStorage.setItem('vault_items', JSON.stringify(items)); } catch(e) { toast('Storage full — export your data to free space', 4000); }
+}
+
+function load() {
+  try { items = JSON.parse(localStorage.getItem('vault_items') || '[]'); } catch(e) { items = []; }
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+load();
+renderAll();
+
+// ─── TABS ────────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  activeTab = tab;
+  activeTag = null;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  renderAll();
+}
+
+// ─── FILTERED ITEMS ──────────────────────────────────────────────────────────
+function getFiltered() {
+  const q = document.getElementById('search-input').value.trim().toLowerCase();
+  const sort = document.getElementById('sort-select').value;
+
+  let list = items.filter(item => {
+    if (activeTab !== 'all' && item.type !== activeTab) return false;
+    if (activeTag && !(item.tags || []).includes(activeTag)) return false;
+    if (!q) return true;
+    const haystack = [item.title, item.source, item.note, item.content, ...(item.tags || [])].join(' ').toLowerCase();
+    return haystack.includes(q);
+  });
+
+  list.sort((a, b) => {
+    if (sort === 'date-desc') return new Date(b.saved) - new Date(a.saved);
+    if (sort === 'date-asc') return new Date(a.saved) - new Date(b.saved);
+    if (sort === 'source') return (a.source || '').localeCompare(b.source || '');
+    if (sort === 'title') return (a.title || '').localeCompare(b.title || '');
+    return 0;
+  });
+
+  // Pinned always first
+  list.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+  return list;
+}
+
+// ─── RENDER ALL ──────────────────────────────────────────────────────────────
+function renderAll() {
+  updateCounts();
+  renderTagBar();
+  renderCards();
+}
+
+function updateCounts() {
+  const total = items.length;
+  document.getElementById('total-count').textContent = total + (total === 1 ? ' item' : ' items');
+  document.getElementById('count-all').textContent = total;
+  ['newsletter','article','pdf','note','website'].forEach(t => {
+    document.getElementById('count-' + t).textContent = items.filter(i => i.type === t).length;
+  });
+}
+
+function renderTagBar() {
+  const all = {};
+  items.forEach(item => {
+    if (activeTab !== 'all' && item.type !== activeTab) return;
+    (item.tags || []).forEach(tag => { all[tag] = (all[tag] || 0) + 1; });
+  });
+  const tags = Object.keys(all).sort();
+  const bar = document.getElementById('tag-bar');
+  if (!tags.length) {
+    bar.innerHTML = '<span class="tag-bar-label">tags:</span><span style="font-size:11px;color:var(--faint);font-family:\'DM Mono\',monospace">none yet</span>';
+    return;
+  }
+  bar.innerHTML = '<span class="tag-bar-label">tags:</span>' + tags.map(t =>
+    `<span class="tag-chip${activeTag === t ? ' active' : ''}" onclick="filterTag('${esc(t)}')">#${esc(t)} <span style="opacity:0.5">${all[t]}</span></span>`
+  ).join('');
+}
+
+function filterTag(tag) {
+  activeTag = (activeTag === tag) ? null : tag;
+  renderAll();
+}
+
+function highlight(text, q) {
+  if (!q || !text) return esc(text || '');
+  return esc(text).replace(new RegExp(esc(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), m => `<mark>${m}</mark>`);
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderCards() {
+  const q = document.getElementById('search-input').value.trim().toLowerCase();
+  const list = getFiltered();
+  const grid = document.getElementById('cards-grid');
+  const empty = document.getElementById('empty-state');
+  const noRes = document.getElementById('no-results');
+  const status = document.getElementById('filter-status');
+
+  if (items.length === 0) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    noRes.style.display = 'none';
+    status.textContent = '';
+    return;
+  }
+
+  empty.style.display = 'none';
+
+  if (list.length === 0) {
+    grid.innerHTML = '';
+    noRes.style.display = 'block';
+    status.textContent = '';
+    return;
+  }
+
+  noRes.style.display = 'none';
+  status.textContent = list.length < items.length ? `showing ${list.length} of ${items.length}` : '';
+
+  const typeColor = { newsletter: 'var(--blue)', article: 'var(--teal)', pdf: 'var(--amber)', note: 'var(--purple)', website: 'var(--green)' };
+  const typeIcon  = { newsletter: '📧', article: '📰', pdf: '📄', note: '📝', website: '🌐' };
+
+  grid.innerHTML = list.map(item => {
+    const tags = (item.tags || []).map(t =>
+      `<span class="card-tag" onclick="filterTag('${esc(t)}')" title="Filter by #${esc(t)}">#${highlight(t, q)}</span>`
+    ).join('');
+
+    const titleHL = highlight(item.title, q);
+    const sourceHL = highlight(item.source, q);
+    const noteHL = highlight(item.note || item.content || '', q);
+    const date = item.saved ? new Date(item.saved).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}) : '';
+
+    const openBtn = (item.url || item.pdfData)
+      ? `<button class="action-btn open-btn" title="Open" onclick="openItem('${item.id}')">↗</button>`
+      : '';
+    const shareBtn = `<button class="action-btn share-btn" title="Share via email" onclick="shareItem('${item.id}')">✉</button>`;
+
+    return `<div class="card${item.pinned ? ' pinned' : ''}" id="card-${item.id}">
+      <div class="card-type-bar" style="background:${typeColor[item.type] || 'var(--muted)'}"></div>
+      <div class="card-body">
+        <div class="card-title">${typeIcon[item.type] || ''} ${titleHL}</div>
+        <div class="card-meta">
+          ${item.source ? `<span class="card-source">${sourceHL}</span>` : ''}
+          ${date ? `<span class="card-date">${date}</span>` : ''}
+          ${item.type === 'pdf' && item.pdfSize ? `<span class="pdf-size">${formatSize(item.pdfSize)}</span>` : ''}
+        </div>
+        ${tags ? `<div class="card-tags">${tags}</div>` : ''}
+        ${noteHL ? `<div class="card-note">${noteHL.substring(0,200)}${noteHL.length > 200 ? '…' : ''}</div>` : ''}
+      </div>
+      <div class="card-actions">
+        ${openBtn}
+        ${shareBtn}
+        <button class="action-btn pin-btn${item.pinned ? ' pinned' : ''}" title="${item.pinned ? 'Unpin' : 'Pin'}" onclick="togglePin('${item.id}')">📌</button>
+        <button class="action-btn delete-btn" title="Delete" onclick="deleteItem('${item.id}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return Math.round(bytes/1024) + ' KB';
+  return (bytes/1048576).toFixed(1) + ' MB';
+}
+
+// ─── ACTIONS ─────────────────────────────────────────────────────────────────
+function togglePin(id) {
+  const item = items.find(i => i.id === id);
+  if (item) { item.pinned = !item.pinned; save(); renderAll(); }
+}
+
+function deleteItem(id) {
+  if (!confirm('Remove this item from your Vault?')) return;
+  items = items.filter(i => i.id !== id);
+  save();
+  renderAll();
+  toast('Item removed');
+}
+
+function openItem(id) {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  if (item.pdfData) {
+    const blob = b64toBlob(item.pdfData, 'application/pdf');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => document.body.removeChild(a), 100);
+  } else if (item.url) {
+    const a = document.createElement('a');
+    a.href = item.url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => document.body.removeChild(a), 100);
+  }
+}
+
+function b64toBlob(b64, type) {
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type });
+}
+
+// ─── MODAL ───────────────────────────────────────────────────────────────────
+function openModal() {
+  document.getElementById('modal-overlay').classList.add('open');
+  selectType('newsletter');
+  resetForm();
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  pdfData = null;
+  pdfFileName = '';
+}
+
+function selectType(type) {
+  currentType = type;
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.toggle('active', b.dataset.type === type));
+  ['newsletter','article','pdf','note','website'].forEach(t => {
+    document.getElementById('fields-' + t).style.display = (t === type) ? 'block' : 'none';
+  });
+}
+
+function resetForm() {
+  ['nl-title','nl-url','nl-source','nl-tags','nl-note',
+   'ar-url','ar-title','ar-source','ar-tags','ar-note',
+   'pdf-title','pdf-source','pdf-tags','pdf-note',
+   'ws-url','ws-title','ws-source','ws-tags','ws-note',
+   'nt-title','nt-source','nt-content','nt-tags'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('pdf-selected').style.display = 'none';
+  pdfData = null;
+  pdfFileName = '';
+}
+
+// ─── PDF HANDLING ─────────────────────────────────────────────────────────────
+function handlePdfSelect(event) {
+  const file = event.target.files[0];
+  if (file) readPdf(file);
+}
+
+function handlePdfDrop(event) {
+  event.preventDefault();
+  document.getElementById('pdf-drop').classList.remove('dragover');
+  const file = event.dataTransfer.files[0];
+  if (file && file.type === 'application/pdf') readPdf(file);
+}
+
+function readPdf(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    pdfData = e.target.result.split(',')[1];
+    pdfFileName = file.name;
+    const sel = document.getElementById('pdf-selected');
+    sel.textContent = '✓ ' + file.name + ' (' + formatSize(file.size) + ')';
+    sel.style.display = 'block';
+    const titleEl = document.getElementById('pdf-title');
+    if (!titleEl.value) titleEl.value = file.name.replace(/\.pdf$/i, '').replace(/[-_]/g, ' ');
+    document.getElementById('pdf-drop').classList.remove('dragover');
+  };
+  reader.readAsDataURL(file);
+}
+
+// ─── AUTO-FETCH TITLE ─────────────────────────────────────────────────────────
+let fetchTimer;
+function maybeFetchTitle() {
+  clearTimeout(fetchTimer);
+  fetchTimer = setTimeout(() => {
+    const url = document.getElementById('ar-url').value.trim();
+    if (!url.startsWith('http')) return;
+    try {
+      const u = new URL(url);
+      const titleEl = document.getElementById('ar-title');
+      const sourceEl = document.getElementById('ar-source');
+      if (!sourceEl.value) sourceEl.value = u.hostname.replace('www.', '');
+      // Title extraction from URL path as fallback
+      if (!titleEl.value) {
+        const slug = u.pathname.split('/').filter(Boolean).pop() || '';
+        const readable = slug.replace(/[-_]/g, ' ').replace(/\.\w+$/, '');
+        if (readable) titleEl.value = readable.charAt(0).toUpperCase() + readable.slice(1);
+      }
+    } catch(e) {}
+  }, 600);
+}
+
+// ─── SAVE ────────────────────────────────────────────────────────────────────
+function saveItem() {
+  const type = currentType;
+  let item = { id: Date.now().toString(), type, saved: new Date().toISOString(), pinned: false };
+
+  if (type === 'newsletter') {
+    const title = document.getElementById('nl-title').value.trim();
+    if (!title) { alert('Please enter a newsletter name.'); return; }
+    item.title   = title;
+    item.url     = document.getElementById('nl-url').value.trim();
+    item.source  = document.getElementById('nl-source').value.trim();
+    item.tags    = parseTags(document.getElementById('nl-tags').value);
+    item.note    = document.getElementById('nl-note').value.trim();
+
+  } else if (type === 'article') {
+    const url = document.getElementById('ar-url').value.trim();
+    if (!url) { alert('Please enter an article URL.'); return; }
+    item.url    = url;
+    item.title  = document.getElementById('ar-title').value.trim() || url;
+    item.source = document.getElementById('ar-source').value.trim();
+    item.tags   = parseTags(document.getElementById('ar-tags').value);
+    item.note   = document.getElementById('ar-note').value.trim();
+
+  } else if (type === 'pdf') {
+    if (!pdfData) { alert('Please select a PDF file.'); return; }
+    item.pdfData  = pdfData;
+    item.pdfSize  = Math.round(pdfData.length * 0.75);
+    item.title    = document.getElementById('pdf-title').value.trim() || pdfFileName;
+    item.source   = document.getElementById('pdf-source').value.trim();
+    item.tags     = parseTags(document.getElementById('pdf-tags').value);
+    item.note     = document.getElementById('pdf-note').value.trim();
+
+  } else if (type === 'website') {
+    const url = document.getElementById('ws-url').value.trim();
+    if (!url) { alert('Please enter a URL.'); return; }
+    item.url    = url;
+    item.title  = document.getElementById('ws-title').value.trim() || url;
+    item.source = document.getElementById('ws-source').value.trim();
+    item.tags   = parseTags(document.getElementById('ws-tags').value);
+    item.note   = document.getElementById('ws-note').value.trim();
+
+  } else if (type === 'note') {
+    const title   = document.getElementById('nt-title').value.trim();
+    const content = document.getElementById('nt-content').value.trim();
+    if (!title || !content) { alert('Please add a title and content.'); return; }
+    item.title   = title;
+    item.source  = document.getElementById('nt-source').value.trim();
+    item.content = content;
+    item.tags    = parseTags(document.getElementById('nt-tags').value);
+  }
+
+  items.unshift(item);
+  save();
+  closeModal();
+  renderAll();
+  toast('Saved to your Vault ✓');
+}
+
+function parseTags(str) {
+  return str.split(',').map(t => t.trim().toLowerCase().replace(/^#/, '')).filter(Boolean);
+}
+
+let fetchWebTimer;
+function maybeFetchWebsiteTitle() {
+  clearTimeout(fetchWebTimer);
+  fetchWebTimer = setTimeout(() => {
+    const url = document.getElementById('ws-url').value.trim();
+    if (!url.startsWith('http')) return;
+    try {
+      const u = new URL(url);
+      const titleEl = document.getElementById('ws-title');
+      const sourceEl = document.getElementById('ws-source');
+      if (!titleEl.value) titleEl.value = u.hostname.replace('www.', '');
+      if (!sourceEl.value) sourceEl.value = u.hostname.replace('www.', '');
+    } catch(e) {}
+  }, 600);
+}
+
+// ─── SHARE ───────────────────────────────────────────────────────────────────
+function shareItem(id) {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+
+  const subject = encodeURIComponent('Thought you might find this interesting: ' + (item.title || 'a great find'));
+
+  let linkLine = '';
+  if (item.url) {
+    linkLine = item.url;
+  } else if (item.type === 'pdf') {
+    linkLine = '(PDF attached — I can send you the file directly)';
+  }
+
+  const noteLine = item.note || item.content
+    ? '\n\nMy notes: ' + (item.note || item.content)
+    : '';
+
+  const tagsLine = (item.tags || []).length
+    ? '\nTags: ' + item.tags.map(t => '#' + t).join('  ')
+    : '';
+
+  const body = encodeURIComponent(
+    'Hey!\n\nI saw this and thought you might find it interesting.\n\n'
+    + (item.title ? '"' + item.title + '"' : '')
+    + (item.source ? '\nSource: ' + item.source : '')
+    + (linkLine ? '\n' + linkLine : '')
+    + noteLine
+    + tagsLine
+    + '\n\nHope you\'re doing well!\n\nScott'
+  );
+
+  window.location.href = 'mailto:?subject=' + subject + '&body=' + body;
+  toast('Opening your email client…');
+}
+
+// ─── EXPORT / IMPORT ─────────────────────────────────────────────────────────
+function exportData() {
+  const json = JSON.stringify(items, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'vault-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  toast('Backup exported ✓');
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (!Array.isArray(imported)) throw new Error('Invalid format');
+      const newCount = imported.filter(imp => !items.find(ex => ex.id === imp.id)).length;
+      imported.forEach(imp => { if (!items.find(ex => ex.id === imp.id)) items.unshift(imp); });
+      save();
+      renderAll();
+      toast(`Imported ${newCount} new item${newCount !== 1 ? 's' : ''} ✓`);
+    } catch(e) {
+      alert('Import failed — invalid Vault backup file.');
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ─── TOAST ───────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, duration = 2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), duration);
+}
+
+// ─── KEYBOARD ────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault();
+    document.getElementById('search-input').focus();
+  }
+});
+</script>
+</body>
+</html>
