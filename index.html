@@ -751,7 +751,26 @@ mark {
   transform: translateY(0);
 }
 
+.gdrive-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  border-radius: var(--radius);
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.gdrive-btn:hover { color: var(--text); border-color: var(--faint); }
+.gdrive-btn.connected { color: var(--teal); border-color: var(--teal); }
+.gdrive-btn.syncing { color: var(--gold); border-color: var(--gold-dim); }
+.sync-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
 #import-input { display: none; }
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 </style>
 </head>
 <body>
@@ -763,6 +782,10 @@ mark {
     <div class="logo-text">The <span>Vault</span></div>
   </div>
   <div class="header-actions">
+    <button class="gdrive-btn" id="gdrive-btn" onclick="handleDriveClick()">
+      <span class="sync-dot"></span>
+      <span id="gdrive-label">Connect Drive</span>
+    </button>
     <span class="count-pill" id="total-count">0 items</span>
   </div>
 </header>
@@ -1024,6 +1047,7 @@ let currentType = 'newsletter';
 // ─── STORAGE ────────────────────────────────────────────────────────────────
 function save() {
   try { localStorage.setItem('vault_items', JSON.stringify(items)); } catch(e) { toast('Storage full — export your data to free space', 4000); }
+  scheduleDriveSync();
 }
 
 function load() {
@@ -1474,6 +1498,140 @@ function toast(msg, duration = 2500) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('show'), duration);
 }
+
+// ─── GOOGLE DRIVE SYNC ───────────────────────────────────────────────────────
+const CLIENT_ID = '1082379902892-3j7nftuv2c8g473eges47m9ie4mhpa1e.apps.googleusercontent.com';
+const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
+const FILE_NAME = 'vault-data.json';
+
+let gAccessToken = null;
+let gFileId = null;
+let syncPending = false;
+let syncTimer = null;
+
+function handleDriveClick() {
+  if (gAccessToken) {
+    syncToDrive(true);
+  } else {
+    signInWithGoogle();
+  }
+}
+
+function signInWithGoogle() {
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: async (resp) => {
+      if (resp.error) { toast('Google sign-in failed: ' + resp.error, 4000); return; }
+      gAccessToken = resp.access_token;
+      localStorage.setItem('vault_gdrive_token', gAccessToken);
+      updateDriveBtn('connected');
+      toast('Connected to Google Drive ✓');
+      await findOrCreateFile();
+      await loadFromDrive();
+    }
+  });
+  client.requestAccessToken();
+}
+
+function updateDriveBtn(state) {
+  const btn = document.getElementById('gdrive-btn');
+  const label = document.getElementById('gdrive-label');
+  btn.className = 'gdrive-btn';
+  if (state === 'connected') { btn.classList.add('connected'); label.textContent = 'Drive Synced'; }
+  else if (state === 'syncing') { btn.classList.add('syncing'); label.textContent = 'Syncing…'; }
+  else if (state === 'error') { label.textContent = 'Sync Error'; }
+  else { label.textContent = 'Connect Drive'; }
+}
+
+async function findOrCreateFile() {
+  const res = await fetch(
+    'https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D%22' + FILE_NAME + '%22&fields=files(id,name)',
+    { headers: { Authorization: 'Bearer ' + gAccessToken } }
+  );
+  const data = await res.json();
+  if (data.files && data.files.length > 0) {
+    gFileId = data.files[0].id;
+    localStorage.setItem('vault_gdrive_fileid', gFileId);
+  } else {
+    await createDriveFile();
+  }
+}
+
+async function createDriveFile() {
+  const meta = { name: FILE_NAME, parents: ['appDataFolder'] };
+  const content = JSON.stringify(items);
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+  form.append('file', new Blob([content], { type: 'application/json' }));
+  const res = await fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+    { method: 'POST', headers: { Authorization: 'Bearer ' + gAccessToken }, body: form }
+  );
+  const data = await res.json();
+  gFileId = data.id;
+  localStorage.setItem('vault_gdrive_fileid', gFileId);
+}
+
+async function loadFromDrive() {
+  if (!gAccessToken || !gFileId) return;
+  try {
+    updateDriveBtn('syncing');
+    const res = await fetch(
+      'https://www.googleapis.com/drive/v3/files/' + gFileId + '?alt=media',
+      { headers: { Authorization: 'Bearer ' + gAccessToken } }
+    );
+    const driveItems = await res.json();
+    if (Array.isArray(driveItems) && driveItems.length >= items.length) {
+      items = driveItems;
+      save();
+      renderAll();
+      toast('Vault loaded from Google Drive ✓');
+    }
+    updateDriveBtn('connected');
+  } catch(e) {
+    updateDriveBtn('error');
+    toast('Could not load from Drive — using local data', 3000);
+  }
+}
+
+async function syncToDrive(manual = false) {
+  if (!gAccessToken || !gFileId) return;
+  try {
+    updateDriveBtn('syncing');
+    await fetch(
+      'https://www.googleapis.com/upload/drive/v3/files/' + gFileId + '?uploadType=media',
+      {
+        method: 'PATCH',
+        headers: { Authorization: 'Bearer ' + gAccessToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify(items)
+      }
+    );
+    updateDriveBtn('connected');
+    if (manual) toast('Synced to Google Drive ✓');
+  } catch(e) {
+    updateDriveBtn('error');
+    if (manual) toast('Sync failed — check your connection', 3000);
+  }
+}
+
+function scheduleDriveSync() {
+  if (!gAccessToken) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => syncToDrive(), 2000);
+}
+
+// Auto-restore token on load
+window.addEventListener('load', () => {
+  const savedToken = localStorage.getItem('vault_gdrive_token');
+  const savedFileId = localStorage.getItem('vault_gdrive_fileid');
+  if (savedToken && savedFileId) {
+    gAccessToken = savedToken;
+    gFileId = savedFileId;
+    updateDriveBtn('connected');
+    loadFromDrive();
+  }
+});
 
 // ─── KEYBOARD ────────────────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
